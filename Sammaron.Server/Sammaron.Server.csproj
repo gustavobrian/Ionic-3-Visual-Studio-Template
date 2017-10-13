@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+    <UserSecretsId>ef79a002-4f86-4905-bed0-7e32d2de6428</UserSecretsId>
+    <TypeScriptToolsVersion>2.5</TypeScriptToolsVersion>
+    <SignAssembly>false</SignAssembly>
+    <ApplicationIcon />
+    <Win32Resource />
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageProjectUrl>https://github.com/rahmadSammaron/Ionic-3-Visual-Studio-Template</PackageProjectUrl>
+    <Company>Sammaron</Company>
+    <Authors>Rahm Ahmed Sammaron</Authors>
+    <StartupObject></StartupObject>
+    <PackageId>Sammaron.Api</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="ErrorDescribers\**" />
+    <Compile Remove="Localization\**" />
+    <Compile Remove="Microsoft.Extensions.Identity.Core\**" />
+    <Content Remove="ErrorDescribers\**" />
+    <Content Remove="Localization\**" />
+    <Content Remove="Microsoft.Extensions.Identity.Core\**" />
+    <EmbeddedResource Remove="ErrorDescribers\**" />
+    <EmbeddedResource Remove="Localization\**" />
+    <EmbeddedResource Remove="Microsoft.Extensions.Identity.Core\**" />
+    <None Remove="ErrorDescribers\**" />
+    <None Remove="Localization\**" />
+    <None Remove="Microsoft.Extensions.Identity.Core\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\images\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="IdentityServer4.EntityFramework" Version="2.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sammaron.Authentication\Sammaron.Authentication.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <TypeScriptTarget>ES5</TypeScriptTarget>
+    <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
+    <TypeScriptModuleKind />
+    <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
+    <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
+    <TypeScriptOutFile />
+    <TypeScriptOutDir />
+    <TypeScriptGeneratesDeclarations>False</TypeScriptGeneratesDeclarations>
+    <TypeScriptNoEmitOnError>True</TypeScriptNoEmitOnError>
+    <TypeScriptSourceMap>True</TypeScriptSourceMap>
+    <TypeScriptMapRoot />
+    <TypeScriptSourceRoot />
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

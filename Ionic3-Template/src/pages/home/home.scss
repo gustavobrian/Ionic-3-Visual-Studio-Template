@@ -1,0 +1,14 @@
+page-home {
+     margin-top: 6rem;
+    .center {
+        text-align: center;  
+    }
+    
+    .logo {
+      display: inline-flex;
+      position:relative;
+      height:15vh;
+      -moz-animation: spin 2s infinite linear;
+      -webkit-animation: spin 2s infinite linear;
+    }
+}

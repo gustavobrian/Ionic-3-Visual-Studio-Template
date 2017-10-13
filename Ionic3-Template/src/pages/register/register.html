@@ -1,0 +1,35 @@
+<ion-content padding>
+  <form (ngSubmit)="register()" #registerForm="ngForm" id="registerForm" enctype="multipart/form-data">
+    <ion-list inset>
+      <ion-item>
+        <ion-input type="text" placeholder="First Name" name="firstName" [(ngModel)]="model.firstName" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input type="text" placeholder="Last Name" name="lastName" [(ngModel)]="model.lastName" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input type="text" placeholder="Headline" name="headline" [(ngModel)]="model.headline" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <input type="file" title="Profile Image" (change)="readUrl($event)" />
+      </ion-item>
+      <ion-item>
+        <ion-textarea ion-input placeholder="Summary" name="summary" [(ngModel)]="model.summary" required></ion-textarea>
+      </ion-item>
+      <ion-item>
+        <ion-input type="text" placeholder="User Name" name="userName" [(ngModel)]="model.userName" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input type="text" placeholder="Email" name="email" [(ngModel)]="model.email" required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-input type="password" placeholder="Password" name="password" [(ngModel)]="model.password" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input type="password" placeholder="Confirm Password" name="confirmPassword" [(ngModel)]="model.confirmPassword" required></ion-input>
+      </ion-item>
+    </ion-list>
+    <button ion-button type="submit" [disabled]="!registerForm.form.valid" style="float: right">Register</button>
+  </form>
+</ion-content>

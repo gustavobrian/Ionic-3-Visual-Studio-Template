@@ -1,0 +1,14 @@
+<ion-content>
+  <ion-list *ngIf="users">
+    <ion-item *ngFor="let item of users" (click)="itemTapped($event, item)" text-wrap>
+      <ion-thumbnail item-start>
+        <img [src]="item.profileImageUrl" alt="">
+      </ion-thumbnail>
+      <h2>{{item.firstName}} {{item.lastName}}</h2>
+      <p>{{item.summary}}</p>      
+    </ion-item>
+  </ion-list>
+  <div *ngIf="selectedItem" padding>
+    You navigated here from <b>{{selectedItem.firstName}} {{selectedItem.lastName}}</b>
+  </div>
+</ion-content>

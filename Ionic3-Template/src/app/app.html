@@ -1,0 +1,61 @@
+<ion-menu [content]="content">
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Menu</ion-title>
+      <button ion-button menuToggle right>
+        <ion-icon name="menu"></ion-icon>
+      </button>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content>
+    <ion-card text-center *ngIf="auth.user && auth.user.isAuthenticated">
+      <ion-avatar>
+        <img [src]="auth.user.profileImageUrl" alt="" />
+      </ion-avatar>
+      <div text-center style="padding-top: 2rem;padding-bottom: 2rem">
+        <strong>{{auth.user.firstName}} {{auth.user.lastName}}</strong>   
+        <p>{{auth.user.Headline}}</p>
+        <a href="mailto:{{auth.user.email}}">{{auth.user.email}}</a> 
+        <a style="text-decoration: none !important;" href="https://www.linkedin.com/in/rahmedsammaron/">
+          @rahmedsammaron
+        </a>
+      </div>
+      <!--<ion-item>
+        <ion-label>Summary</ion-label>
+        <ion-toggle [(ngModel)]="showSummary" right></ion-toggle>
+      </ion-item>
+      <p padding *ngIf="showSummary">{{auth.user.Summary}}</p>-->
+    </ion-card> 
+    <ion-list *ngIf="auth.user && auth.user.isAuthenticated">
+      <ion-item menuClose *ngFor="let page of pages.concat(authorizedUserPages)" [class.active]="page.component.name==rootPage.name" (click)="openPage(page)">
+        <ion-icon [name]="page.icon" item-left></ion-icon>
+        {{this.name}}
+        {{page.title}}
+      </ion-item>
+    </ion-list>
+    <ion-list *ngIf="auth.user && !auth.user.isAuthenticated">
+      <ion-item menuClose *ngFor="let page of unauthorizedUserPages" [class.active]="page.component.name==rootPage.name" (click)="openPage(page)">
+        <ion-icon [name]="page.icon" item-left></ion-icon>
+        {{page.title}}
+      </ion-item>
+    </ion-list>  
+  </ion-content>
+</ion-menu>
+
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle> 
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>{{title}}</ion-title>
+    <ion-buttons end *ngIf="auth.user && auth.user.isAuthenticated">
+      <button ion-button icon-only (click)="logout()">
+        <ion-icon name="log-out"></ion-icon>
+      </button>
+    </ion-buttons>
+  </ion-navbar>
+</ion-header>
+
+<!-- Disable swipe-to-go-back because it's poor UX to combine STGB with side menus -->
+<ion-nav [root]="rootPage" #content swipeBackEnabled="false"></ion-nav>

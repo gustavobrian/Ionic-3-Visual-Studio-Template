@@ -1,0 +1,17 @@
+<ion-content padding>
+  <form (ngSubmit)="login()" #loginForm="ngForm" id="loginForm">
+    <ion-list inset>
+      <ion-item>
+        <ion-input type="text" placeholder="User Name" name="UserName" [(ngModel)]="model.UserName" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input type="password" placeholder="Password" name="Password" [(ngModel)]="model.Password" required></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label>Remember Me?</ion-label>
+        <ion-checkbox name="RememberMe" [(ngModel)]="model.RememberMe"></ion-checkbox>
+      </ion-item>
+    </ion-list>
+    <button ion-button type="submit" [disabled]="!loginForm.form.valid" style="float: right">Login</button>
+  </form>
+</ion-content>

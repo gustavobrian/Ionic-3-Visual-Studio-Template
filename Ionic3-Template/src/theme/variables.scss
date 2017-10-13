@@ -1,0 +1,110 @@
+// Ionic Variables and Theming. For more info, please see:
+// http://ionicframework.com/docs/v2/theming/
+
+$font-path: "../assets/fonts";
+@import "ionic.globals";
+
+
+// Shared Variables
+// --------------------------------------------------
+// To customize the look and feel of this app, you can override
+// the Sass variables found in Ionic's source scss files.
+// To view all the possible Ionic variables, see:
+// http://ionicframework.com/docs/v2/theming/overriding-ionic-variables/
+
+
+
+
+// Named Color Variables
+// --------------------------------------------------
+// Named colors makes it easy to reuse colors on various components.
+// It's highly recommended to change the default colors
+// to match your app's branding. Ionic uses a Sass map of
+// colors so you can add, rename and remove colors as needed.
+// The "primary" color is the only required color in the map.
+
+$colors: (primary:#904360, secondary:#d6d6d7, danger: #4f2535, light: #eeeceb, dark: #5a5554,) !default;
+
+
+// App iOS Variables
+// --------------------------------------------------
+// iOS only Sass variables can go here
+
+
+
+
+// App Material Design Variables
+// --------------------------------------------------
+// Material Design only Sass variables can go here
+
+
+
+
+// App Windows Variables
+// --------------------------------------------------
+// Windows only Sass variables can go here
+
+
+
+
+// App Theme
+// --------------------------------------------------
+// Ionic apps can have different themes applied, which can
+// then be future customized. This import comes last
+// so that the above variables are used and Ionic's
+// default are overridden.
+
+
+$app-direction: multi;
+$text-color: #ffff !default;
+$link-color: color($colors, primary) !default;
+$background-color: color($colors, light) !default;
+$subdued-text-color: #666 !default;
+
+$font-family-base: -apple-system, "Helvetica Neue", "Roboto", sans-serif !default;
+$font-size-base: 1.4rem !default; // 1.4rem == 14px
+
+$content-padding: 16px !default;
+$content-margin: 16px !default;
+
+$toolbar-background: color($colors, primary) !default;
+$toolbar-border-color: color($colors, primary) !default;
+$toolbar-text-color: $text-color !default;
+$toolbar-active-color: $link-color !default;
+$toolbar-inactive-color: #8c8c8c !default;
+
+.item-md:hover {
+  background-color: color($colors, secondary);
+}
+
+ion-avatar, .item.active {
+  background-color: color($colors, secondary) !important;
+}
+
+
+.m-6 {
+  margin-top: 6rem;
+}
+
+$tabs-background: #f8f8f8 !default;
+$tabs-border-color: #b2b2b2 !default;
+$tabs-tab-color-inactive: #8c8c8c !default;
+$tabs-tab-color-active: $link-color !default;
+
+$list-text-color: $text-color !default;
+$list-background-color: $background-color !default;
+$list-border-color: #c8c7cc !default;
+
+// Ionicons
+// --------------------------------------------------
+// The premium icon font for Ionic. For more info, please see:
+// http://ionicframework.com/docs/v2/ionicons/
+
+@import "ionicons";
+
+
+// Fonts
+// --------------------------------------------------
+
+@import "roboto";
+@import "noto-sans";
