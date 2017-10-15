@@ -11,7 +11,7 @@ namespace Sammaron.Authentication.JwtBearer
 
     public class BearerOptions<TSecurityTokenValidator> : AuthenticationSchemeOptions where TSecurityTokenValidator : class, ISecurityTokenValidator, new()
     {
-        public const int DefaultTokenLifetimeInMinutes = 3600;
+        public const int DefaultTokenLifetimeInMinutes = 1560;
 
         /// <summary>
         /// Gets or sets if HTTPS is required for the metadata address or authority.

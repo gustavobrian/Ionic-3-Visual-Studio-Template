@@ -1,31 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using AutoMapper;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using Sammaron.Authentication;
 using Sammaron.Authentication.JwtBearer;
+using Sammaron.Authentication.JwtBearer.Extensions;
 using Sammaron.Authentication.JwtBearer.Handlers;
 using Sammaron.Core.Data;
 using Sammaron.Core.Interfaces;
 using Sammaron.Core.Models;
 using Sammaron.Core.Services;
+using Sammaron.Server.Extensions;
 using Sammaron.Server.ViewModels;
 using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
 
 namespace Sammaron.Server
 {
@@ -52,8 +55,6 @@ namespace Sammaron.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddCors(options => options.AddPolicy("AllowAll", builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
-
             services.AddDbContext<ApiContext>(options =>
             {
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
@@ -62,66 +63,85 @@ namespace Sammaron.Server
             services.AddLocalization();
 
             services.Configure<RequestLocalizationOptions>(ConfigureOptions);
-            services.AddIdentity<User, IdentityRole>(options =>
+            services.AddIdentityBase<User, IdentityRole>(options =>
+            {
+                options.User = new UserOptions
                 {
-                    options.User = new UserOptions
-                    {
-                        RequireUniqueEmail = true
-                    };
-                    options.Password = new PasswordOptions
-                    {
-                        RequireDigit = false,
-                        RequireLowercase = false,
-                        RequireNonAlphanumeric = false,
-                        RequireUppercase = false,
-                        RequiredLength = 6
-                    };
-                })
+                    RequireUniqueEmail = true
+                };
+                options.Password = new PasswordOptions
+                {
+                    RequireDigit = false,
+                    RequireLowercase = false,
+                    RequireNonAlphanumeric = false,
+                    RequireUppercase = false,
+                    RequiredLength = 6
+                };
+            })
                 .AddEntityFrameworkStores<ApiContext>()
                 .AddDefaultTokenProviders();
-                //.AddErrorDescriber<ErrorDescriber>();
 
             services.AddMvc();
             services.AddRouting(options => options.LowercaseUrls = true);
+            services.AddCors(options => options.AddPolicy("AllowAll", builder => builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
             services.AddSwaggerGen(options =>
             {
                 options.SwaggerDoc("v1", new Info
                 {
                     Version = "v1",
                     Title = "Sammaorn Jwt Authentication Server",
-                    Description = "An API that allows",
+                    Description = "A server that uses ASP.NET Identity Entity Framework as a persistence store and Bearer for user authentication.",
                     TermsOfService = "None",
-                    Contact = new Contact { Name = "Rahma Ahmed", Email = "rahmed.sammaron@gmail.com", Url = "https://github.com/rahmadSammaron" },
-                    License = new License { Name = "MIT License", Url = "https://github.com/rahmadSammaron/Ionic-3-Visual-Studio-Template/blob/master/LICENSE.md" }
+                    Contact = new Contact
+                    {
+                        Name = "Rahma Ahmed",
+                        Email = "rahmed.sammaron@gmail.com",
+                        Url = "https://github.com/rahmadSammaron"
+                    },
+                    License = new License
+                    {
+                        Name = "MIT License",
+                        Url = "https://github.com/rahmadSammaron/Ionic-3-Visual-Studio-Template/blob/master/LICENSE.md"
+                    }
                 });
                 options.OperationFilter<HeaderFilter>();
+                options.DescribeAllParametersInCamelCase();
+                options.DescribeAllEnumsAsStrings();
             });
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) 
-                    .AddScheme<BearerOptions, BearerAuthenticationHandler>("Bearer", null, options =>
-                    {
-                        options.Audience = "*";
-                        options.TokenLifetimeInMinutes = 3600;
-                        options.ClaimsIssuer = IdentityConstants.ApplicationScheme;
-                        options.TokenValidationParameters = new TokenValidationParameters
-                        {
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("SigningKey"))),
-                            TokenDecryptionKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("DecryptionKey"))),
-                            ValidIssuer = IdentityConstants.ApplicationScheme,
-                            ValidAudience = "*",
-                            ClockSkew = TimeSpan.Zero
-                        };
-                        options.Events = new BearerEvents();
-                    });
-
-            services.AddAutoMapper(expression =>
+            services.AddAuthentication(options =>
             {
-                expression.AddProfile<MappingProfile>();
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultSignOutScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.AddScheme(JwtBearerDefaults.AuthenticationScheme, builder =>
+                {
+                    builder.DisplayName = "Jwt Bearer";
+                    builder.HandlerType = typeof(BearerAuthenticationHandler);
+                });
             });
 
+            services.Configure<BearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Audience = "*";
+                options.ClaimsIssuer = IdentityConstants.ApplicationScheme;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("SigningKey"))),
+                    TokenDecryptionKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("DecryptionKey"))),
+                    ValidIssuers = new[] { IdentityConstants.ApplicationScheme },
+                    ValidAudiences = new[] { "*" },
+                    ClockSkew = TimeSpan.Zero
+                };
+                options.Events = new BearerEvents();
+            });
+
+            services.AddRouting(e => e.LowercaseUrls = true);
+            services.AddAutoMapper(expression => { expression.AddProfile<MappingProfile>(); });
             services.AddTransient<ISmsSender, MessageSender>();
             services.AddTransient<IEmailSender, MessageSender>();
-            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.Replace(ServiceDescriptor.Scoped<IAuthenticationService, BearerAuthenticationService>());
+            services.AddScoped<IBearerAuthenticationService, BearerAuthenticationService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -141,10 +161,7 @@ namespace Sammaron.Server
             app.UseRequestLocalization(requestLocalizationOptions);
 
             // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.), specifying the Swagger JSON endpoint.
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Name");
-            });
+            app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sammaorn OAuth.2 Server"); });
         }
     }
 
@@ -155,23 +172,39 @@ namespace Sammaron.Server
             if (operation == null)
                 return;
 
-            switch (context.ApiDescription.ActionDescriptor)
+            if (context.ApiDescription.ActionDescriptor is ControllerActionDescriptor actionDescriptor &&
+                !actionDescriptor.MethodInfo.HasAttribute<AllowAnonymousAttribute>() &&
+                actionDescriptor.HasAttribute<AuthorizeAttribute>())
             {
-                case ControllerActionDescriptor actionDescriptor when actionDescriptor.MethodInfo.GetCustomAttribute<AllowAnonymousAttribute>() == null &&
-                (actionDescriptor.MethodInfo.GetCustomAttribute<AuthorizeAttribute>() != null
-                || actionDescriptor.ControllerTypeInfo.CustomAttributes.Any(e => e.AttributeType == typeof(AuthorizeAttribute))
-                || actionDescriptor.ControllerTypeInfo.BaseType.CustomAttributes.Any(e => e.AttributeType == typeof(AuthorizeAttribute))):
-                    operation.Parameters = operation.Parameters ?? new List<IParameter>();
-                    operation.Parameters.Add(new NonBodyParameter
-                    {
-                        Description = "The bearer authorization header",
-                        In = "header",
-                        Name = "Authorization",
-                        Required = true,
-                        Default = "Bearer ",
-                        Type = "string"
-                    });
-                    break;
+                operation.Parameters = operation.Parameters ?? new List<IParameter>();
+                operation.Parameters.Add(new NonBodyParameter
+                {
+                    Description = "The bearer authorization header",
+                    In = "header",
+                    Name = "Authorization",
+                    Required = true,
+                    Default = "Bearer ",
+                    Type = "string"
+                });
+            }
+        }
+    }
+
+    public class LowercaseDocumentFilter : IDocumentFilter
+    {
+        public void Apply(SwaggerDocument swaggerDoc, DocumentFilterContext context)
+        {
+            var paths = swaggerDoc.Paths;
+            swaggerDoc.Paths = new Dictionary<string, PathItem>();
+
+            foreach (var path in paths)
+            {
+                var parts = path.Key.Split("/").Where(e => !string.IsNullOrEmpty(e)).ToList();
+                for (var index = 0; index < parts.Count; index++)
+                {
+                    parts[index] = parts[index].ToCamelCase();
+                }
+                swaggerDoc.Paths.Add(string.Join("/", parts), path.Value);
             }
         }
     }

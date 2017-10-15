@@ -11,16 +11,19 @@ using Sammaron.Authentication.JwtBearer.Extensions;
 using Sammaron.Core.Data;
 using Sammaron.Core.Interfaces;
 using Sammaron.Core.Models;
+using Sammaron.Server.Results;
 using Sammaron.Server.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Sammaron.Server.Controllers
 {
     [Authorize(AuthenticationSchemes = "Bearer")]
-    [Route("api/[controller]/[action]")]
+    [Route("api/account")]
     [EnableCors("AllowAll")]
     public class AccountController : Controller
     {
@@ -38,17 +41,15 @@ namespace Sammaron.Server.Controllers
         public ApiContext Context
         { get; }
 
-        public ISmsSender SmsSender { get; }
         public IHostingEnvironment Environment { get; }
-
         public string ImagesPath => $"{Environment.WebRootPath}\\images";
-
         public IMapper Mapper { get; }
         public SignInManager<User> SignInManager { get; }
-        public UserManager<User> UserManager { get; private set; }
+        public ISmsSender SmsSender { get; }
+        public UserManager<User> UserManager { get; protected set; }
 
         // POST api/Account/ChangePassword
-        [HttpPost]
+        [HttpPost, Route("changePassword")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordModel model)
         {
             if (!ModelState.IsValid)
@@ -65,64 +66,32 @@ namespace Sammaron.Server.Controllers
             return await SignInResultAsync(user);
         }
 
-        // POST api/Account/Login
-        [AllowAnonymous]
-        [HttpPost]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        // POST api/Account/Token
+        [AllowAnonymous, HttpPost, Route("token")]
+        public async Task<IActionResult> Token(GrantType grant_type, [FromBody] LoginModel model)
         {
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = await UserManager.FindByNameAsync(model.UserName);
-            if (user == null)
-                return BadRequest();
-
-            var isValidPassword = await UserManager.CheckPasswordAsync(user, model.Password);
-            if (!isValidPassword)
-                return BadRequest();
-
-            return await SignInResultAsync(user);
-        }
-
-        // POST api/Account/Login
-        [AllowAnonymous]
-        [HttpPost]
-        public async Task<IActionResult> PasswordLess([FromBody] PasswordLessModel model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-            var user = Context.Users.FirstOrDefault(e => e.PhoneNumber.Contains(model.PhoneNumber));
-            if (user == null)
-                return BadRequest();
-
-            if (string.IsNullOrEmpty(model.Token))
+            switch (grant_type)
             {
-                model.Token = await UserManager.GenerateUserTokenAsync(user, TokenOptions.DefaultPhoneProvider, $"TOTP:{model.PhoneNumber}");
-                if (Environment.IsDevelopment())
-                {
-                    return Ok(new
-                    {
-                        model.Token
-                    });
-                }
+                case GrantType.password:
+                    return await PasswordLogin(model);
 
-                await SmsSender.SendSmsAsync(model.PhoneNumber, $"Your phone number verification code {model.Token}");
-                return Ok(new
-                {
-                    model.Token
-                });
+                case GrantType.refresh_token:
+                    return SignIn(model.UserIdentifier);
+
+                case GrantType.totp:
+                    return await TOTPLogin(model);
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(grant_type));
             }
-
-            var isValidCode = await UserManager.VerifyUserTokenAsync(user, TokenOptions.DefaultPhoneProvider, $"TOTP:{model.PhoneNumber}", model.Token);
-
-            if (!isValidCode)
-                return BadRequest();
-
-            return await SignInResultAsync(user);
         }
 
         // POST api/Account/Logout
-        [HttpPost]
+        [HttpPost, Route("logout")]
         public IActionResult Logout()
         {
             return SignOut(new AuthenticationProperties(new Dictionary<string, string>
@@ -131,8 +100,7 @@ namespace Sammaron.Server.Controllers
             }), JwtBearerDefaults.AuthenticationScheme);
         }
 
-        [AllowAnonymous]
-        [HttpPost]
+        [AllowAnonymous, HttpPost, Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
             if (!ModelState.IsValid)
@@ -153,7 +121,7 @@ namespace Sammaron.Server.Controllers
             return BadRequest(result.Errors.ToDictionary(e => e.Code, e => e.Description));
         }
 
-        [HttpPost]
+        [HttpPost, Route("setPassword")]
         public async Task<IActionResult> SetPassword([FromBody] PasswordModel model)
         {
             if (!ModelState.IsValid)
@@ -170,7 +138,7 @@ namespace Sammaron.Server.Controllers
             return await SignInResultAsync(user);
         }
 
-        [HttpPost]
+        [HttpPost, Route("updateProfile")]
         public async Task<IActionResult> UpdateProfile([FromBody] ProfileModel model)
         {
             if (!ModelState.IsValid)
@@ -194,6 +162,13 @@ namespace Sammaron.Server.Controllers
             return BadRequest(result.Errors.ToDictionary(e => e.Code, e => e.Description));
         }
 
+        protected async Task<IdentityResult> CreateUserAsync(User user, string password)
+        {
+            return !string.IsNullOrEmpty(password)
+                ? await UserManager.CreateAsync(user, password)
+                : await UserManager.CreateAsync(user);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && UserManager != null)
@@ -205,14 +180,28 @@ namespace Sammaron.Server.Controllers
             base.Dispose(disposing);
         }
 
-        private async Task<IdentityResult> CreateUserAsync(User user, string password)
+        [NonAction]
+        protected async Task<IActionResult> PasswordLogin(LoginModel model)
         {
-            return !string.IsNullOrEmpty(password)
-                ? await UserManager.CreateAsync(user, password)
-                : await UserManager.CreateAsync(user);
+            var user = await UserManager.FindByNameAsync(model.UserIdentifier);
+            if (user == null)
+                return BadRequest();
+
+            var isValidPassword = await UserManager.CheckPasswordAsync(user, model.Password);
+            if (!isValidPassword)
+                return BadRequest();
+
+            return await SignInResultAsync(user);
         }
 
-        private async Task<IActionResult> SignInResultAsync(User user)
+        [NonAction]
+        protected virtual RefreshTokenSignInResult SignIn(string refreshToken)
+        {
+            return new RefreshTokenSignInResult(refreshToken);
+        }
+
+        [NonAction]
+        protected async Task<IActionResult> SignInResultAsync(User user)
         {
             var principal = await SignInManager.ClaimsFactory.CreateClaimsAsync(user);
             var userData = new
@@ -228,10 +217,41 @@ namespace Sammaron.Server.Controllers
             }.ToJsonString();
             return SignIn(principal, new AuthenticationProperties(new Dictionary<string, string>
             {
-                {
-                    BearerConstants.UserDataKey, userData
-                }
+                { BearerConstants.UserDataKey, userData }
             }), JwtBearerDefaults.AuthenticationScheme);
+        }
+
+        [NonAction]
+        protected async Task<IActionResult> TOTPLogin(LoginModel model)
+        {
+            var phoneNumber = Regex.Match(model.UserIdentifier, @"(.{9})\s*$").Value;
+            var user = Context.Users.FirstOrDefault(e => e.PhoneNumber.EndsWith(phoneNumber));
+            if (user == null)
+                return BadRequest();
+            var purpose = $"TOTP:{model.UserIdentifier}";
+            if (string.IsNullOrEmpty(model.Password))
+            {
+                model.Password = await UserManager.GenerateUserTokenAsync(user, TokenOptions.DefaultPhoneProvider, purpose);
+                if (Environment.IsDevelopment())
+                {
+                    return Ok(new
+                    {
+                        model.Password
+                    });
+                }
+
+                await SmsSender.SendSmsAsync(model.UserIdentifier, $"Your phone number verification code {model.Password}");
+                return Ok(new
+                {
+                    model.Password
+                });
+            }
+
+            var isValidCode = await UserManager.VerifyUserTokenAsync(user, TokenOptions.DefaultPhoneProvider, purpose, model.Password);
+            if (!isValidCode)
+                return BadRequest();
+
+            return await SignInResultAsync(user);
         }
     }
 }

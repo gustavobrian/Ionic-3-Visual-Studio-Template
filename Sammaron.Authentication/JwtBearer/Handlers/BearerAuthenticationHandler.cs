@@ -6,9 +6,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Sammaron.Authentication.JwtBearer.Extensions;
+using Sammaron.Core.Data;
 using Sammaron.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Text.Encodings.Web;
@@ -17,15 +20,17 @@ using System.Threading.Tasks;
 
 namespace Sammaron.Authentication.JwtBearer.Handlers
 {
-    public class BearerAuthenticationHandler : AuthenticationHandler<BearerOptions>, IAuthenticationSignInHandler
+    public class BearerAuthenticationHandler : AuthenticationHandler<BearerOptions>, IBearerAuthenticationHandler
     {
         private readonly UserManager<User> _manager;
+        private readonly ApiContext _context;
 
         public BearerAuthenticationHandler(IOptionsMonitor<BearerOptions> options, ILoggerFactory logger, UrlEncoder encoder,
-             UserManager<User> manager, ISystemClock clock)
+             UserManager<User> manager, ApiContext context, ISystemClock clock)
             : base(options, logger, encoder, clock)
         {
             _manager = manager;
+            _context = context;
         }
 
         /// <summary>
@@ -128,18 +133,61 @@ namespace Sammaron.Authentication.JwtBearer.Handlers
             properties.IssuedUtc = issueDate;
             properties.ExpiresUtc = expireDate;
             var token = GenerateToken(principal, expireDate);
+            var refreshToken = await CreateRefreshToken(principal, token);
             var dictionary = new Dictionary<string, object>
             {
                 { "access_token", token },
                 { "token_type" , Options.Challenge},
-                { "expires_in" , new TimeSpan(expireDate.Ticks).TotalSeconds}
+                { "expires_in" , new TimeSpan(expireDate.Ticks).TotalSeconds},
+                { "refresh_token" , refreshToken.Id }
             };
+
             foreach (var property in properties.Items)
             {
                 var match = Regex.Match(property.Value, "({.*?})");
                 dictionary.Add(property.Key, match.Success ? JsonConvert.DeserializeObject(property.Value) : property.Value);
             }
             await Response.WriteJsonAsync(dictionary);
+        }
+
+        public async Task SignInAsync(string id)
+        {
+            var refreshToken = await _context.FindAsync<RefreshToken>(id);
+            try
+            {
+                Options.TokenValidationParameters.ValidateLifetime = false;
+                Options.SecurityTokenValidator.ValidateToken(refreshToken.Token, Options.TokenValidationParameters, out var accessToken);
+                await RemoveRefreshTokenAsync(refreshToken.Subject);
+                await SignInAsync(new ClaimsPrincipal(new ClaimsIdentity((accessToken as JwtSecurityToken)?.Claims)), new AuthenticationProperties());
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 400;
+                await Response.WriteJsonAsync(new
+                {
+                    message = Regex.Replace(Regex.Replace(ex.Message, @"IDX\w{5}: ", ""), @".\n", ". ")
+                });
+            }
+        }
+
+        private async Task RemoveRefreshTokenAsync(string subject)
+        {
+            _context.RemoveRange(_context.RefreshTokens.Where(e => e.Subject == subject));
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<RefreshToken> CreateRefreshToken(ClaimsPrincipal principal, string token)
+        {
+            var refreshToken = new RefreshToken
+            {
+                Id = token.GetHashString(),
+                Token = token,
+                Subject = (principal.Identity as ClaimsIdentity)?.FindFirst(e => e.Type == ClaimTypes.NameIdentifier || e.Type == "nameid").Value
+            };
+
+            _context.Add(refreshToken);
+            await _context.SaveChangesAsync();
+            return refreshToken;
         }
 
         public string GenerateToken(IPrincipal principal, DateTime expires)

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -9,6 +11,8 @@ using Sammaron.Core.Models;
 using System;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Sammaron.Authentication.JwtBearer.Extensions
@@ -59,6 +63,50 @@ namespace Sammaron.Authentication.JwtBearer.Extensions
             return new ClaimsPrincipal(identity);
         }
 
+        public static byte[] GetHash(this string inputString)
+        {
+            HashAlgorithm algorithm = SHA256.Create();
+            return algorithm.ComputeHash(Encoding.UTF8.GetBytes(inputString));
+        }
+
+        public static string GetHashString(this string inputString)
+        {
+            var bytes = inputString.GetHash();
+            return bytes.Aggregate(string.Empty, (current, b) => current + b.ToString("x2"));
+        }
+
+        /// <summary>
+        /// Adds and configures the identity system for the specified User and Role types.
+        /// </summary>
+        /// <typeparam name="TUser">The type representing a User in the system.</typeparam>
+        /// <typeparam name="TRole">The type representing a Role in the system.</typeparam>
+        /// <param name="services">The services available in the application.</param>
+        /// <param name="setupAction">An action to configure the <see cref="T:Microsoft.AspNetCore.Identity.IdentityOptions" />.</param>
+        /// <returns>An <see cref="T:Microsoft.AspNetCore.Identity.IdentityBuilder" /> for creating and configuring the identity system.</returns>
+        public static IdentityBuilder AddIdentityBase<TUser, TRole>(this IServiceCollection services, Action<IdentityOptions> setupAction) where TUser : class where TRole : class
+        {
+            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.TryAddScoped<IUserValidator<TUser>, UserValidator<TUser>>();
+            services.TryAddScoped<IPasswordValidator<TUser>, PasswordValidator<TUser>>();
+            services.TryAddScoped<IPasswordHasher<TUser>, PasswordHasher<TUser>>();
+            services.TryAddScoped<ILookupNormalizer, UpperInvariantLookupNormalizer>();
+            services.TryAddScoped<IRoleValidator<TRole>, RoleValidator<TRole>>();
+            services.TryAddScoped<IdentityErrorDescriber>();
+            services.TryAddScoped<ISecurityStampValidator, SecurityStampValidator<TUser>>();
+            services.TryAddScoped<IUserClaimsPrincipalFactory<TUser>, UserClaimsPrincipalFactory<TUser, TRole>>();
+            services.TryAddScoped<UserManager<TUser>, AspNetUserManager<TUser>>();
+            services.TryAddScoped<SignInManager<TUser>, SignInManager<TUser>>();
+            services.TryAddScoped<RoleManager<TRole>, AspNetRoleManager<TRole>>();
+            if (setupAction != null)
+                services.Configure(setupAction);
+            return new IdentityBuilder(typeof(TUser), typeof(TRole), services);
+        }
+
+        public static Task SignInAsync(this HttpContext context, string scheme, string refreshToken)
+        {
+            return context.RequestServices.GetRequiredService<IBearerAuthenticationService>().SignInAsync(context, scheme, refreshToken);
+        }
+
         public static (string error, string description) CreateErrorDescription(this Exception authFailure)
         {
             var description = string.Empty;
@@ -107,7 +155,7 @@ namespace Sammaron.Authentication.JwtBearer.Extensions
 
                 case SecurityTokenInvalidStampException _:
                     error = "invalid_token";
-                    description = "The access token is invalid";
+                    description = "The access token is no longer valid";
                     break;
 
                 case SecurityTokenException _:
@@ -126,6 +174,7 @@ namespace Sammaron.Authentication.JwtBearer.Extensions
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             });
         }
+
         public static async Task WriteJsonAsync(this HttpResponse response, object o)
         {
             await response.WriteJsonAsync(JsonConvert.SerializeObject(o, settings));

@@ -11,6 +11,8 @@ namespace Sammaron.Core.Data
             
         }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; } 
+
         public DbSet<Position> Positions { get; set; }
     }
 }

@@ -2,8 +2,16 @@ namespace Sammaron.Server.ViewModels
 {
     public class LoginModel
     {
-        public string UserName { get; set; }
+        public string UserIdentifier { get; set; }
         public string Password { get; set; }
-        public bool RememberMe { get; set; }
+
+    }
+
+
+    public enum GrantType
+    {
+        password,
+        refresh_token,
+        totp
     }
 }
